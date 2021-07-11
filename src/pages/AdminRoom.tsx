@@ -1,6 +1,6 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useHistory } from 'react-router-dom'
 
-import { useAuth } from '../hooks/useAuth'
+// import { useAuth } from '../hooks/useAuth'
 import { useRoom } from '../hooks/useRoom'
 import { database } from '../services/firebase'
 
@@ -9,6 +9,7 @@ import { RoomCode } from '../components/RoomCode'
 import { Button } from '../components/Button'
 
 import LogoImg from '../assets/images/logo.svg'
+import DeleteImg from '../assets/images/delete.svg'
 
 import '../styles/room.scss'
 
@@ -17,24 +18,24 @@ type RoomParams = {
 }
 
 export function AdminRoom() {
-  const { user } = useAuth()
+  // const { user } = useAuth()
+  const history = useHistory()
   const params = useParams<RoomParams>()
   const roomId = params.id
 
   const { title, questions } = useRoom(roomId)
 
-  async function handleLikeQuestion(
-    questionId: string,
-    likeId: string | undefined
-  ) {
-    if (likeId) {
-      await database
-        .ref(`rooms/${roomId}/questions/${questionId}/likes/${likeId}`)
-        .remove()
-    } else {
-      await database.ref(`rooms/${roomId}/questions/${questionId}/likes`).push({
-        authorId: user?.id,
-      })
+  async function handleEndRoom() {
+    await database.ref(`rooms/${roomId}`).update({
+      endedAt: new Date(),
+    })
+
+    history.push('/')
+  }
+
+  async function handleDeleteQuestion(questionId: string) {
+    if (window.confirm('Tem certeza que você deseja deletar essa pergunta ?')) {
+      await database.ref(`rooms/${roomId}/questions/${questionId}`).remove()
     }
   }
 
@@ -45,7 +46,9 @@ export function AdminRoom() {
           <img src={LogoImg} alt="Letmeask" />
           <div>
             <RoomCode code={roomId} />
-            <Button isOutlined>Encerrar Sala</Button>
+            <Button isOutlined onClick={handleEndRoom}>
+              Encerrar Sala
+            </Button>
           </div>
         </div>
       </header>
@@ -62,7 +65,15 @@ export function AdminRoom() {
               key={question.id}
               content={question.content}
               author={question.author}
-            />
+            >
+              <button
+                className={`like-button ${question.likeId ? 'liked' : ''}`}
+                type="button"
+                onClick={() => handleDeleteQuestion(question.id)}
+              >
+                <img src={DeleteImg} alt="Remover pergunta" />
+              </button>
+            </Question>
           ))}
         </div>
       </main>
